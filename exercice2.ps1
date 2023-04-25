@@ -14,13 +14,12 @@ foreach ($city in $cities) {
 
     New-ADGroup -Name "$department $city" -GroupScope Global -Path "OU=$department,OU=$city,DC=ad01,DC=lcl"
 
-    $deptGroup = Get-ADGroup -Filter { Name -eq "$department $city"} | Select-Object -Property DistinguishedName
-    Write-Host $deptGroup "//////////////"
+    $deptGroup = Get-ADGroup -Filter { Name -eq "$city $department"} | Select-Object -Property DistinguishedName
     
     $usersInDept = $users | Where-Object { $_.City -eq $city -and $_.Department -eq $department }
 
     foreach ($user in $usersInDept) {
-    Write-Host $deptGroup "//////////////"
+
       Add-ADGroupMember -Identity $deptGroup -Members $user
     }
   
