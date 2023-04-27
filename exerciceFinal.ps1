@@ -149,7 +149,7 @@ function creation_arborescence() {
 
     catch {
 
-        Write-Error "Erreur : " $($_.Exeception.Message)
+        Write_Host "Erreur : " $($_.Exeception.Message)
 
     }
 
