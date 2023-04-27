@@ -140,7 +140,7 @@ function creation_arborescence() {
 
             Read-Host "Entrez le nom de l'OU numero $i"
 
-            New-ADOrganizationalUnit -Name $rep($i) -Path $root
+            New-ADOrganizationalUnit -Name $rep($i) -Path $root 
             $root = "OU=$rep," + $root
 
         }
@@ -149,7 +149,7 @@ function creation_arborescence() {
 
     catch {
 
-        Write-Host "Erreur : " $($_.Exeception.Message)
+        Write-Er "Erreur : " $($_.Exeception.Message)
 
     }
 
