@@ -183,7 +183,7 @@ function desactiver_all_mdp() {
 
 
 function afficher_arborescence {
-
+#aka by le flavien el bg qui a ameliorer a fond la caisse
     param(
     
         [string]$baseDN,
