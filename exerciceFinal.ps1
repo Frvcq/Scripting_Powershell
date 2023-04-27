@@ -1,37 +1,186 @@
 
+is_insttalled (string $name) {
+    $state = $false
+
+    try {
+        if ($((Get-WindowsFeature -name $name).installed)) {
+
+            $state = $true
+        }
+
+        else {
+
+            $state = $false
+           
+        }
+    }
+    catch {
+        Write-Host "Erreur : " $($_.Exeception.Message)
+        $state = $false
+    }
+
+    return $state
+
+}
 function installation_services_AD() {
+
+    if (!(is_installed(AD-Domain-Services))){
+
+        Install-WindowsFeature -Name AD-Domain-Services -IncludeManagementTools
+
+    }
+
+    else{
+
+        Write-Host "cest installed"
+
+    }
+    menu
+    
 
 
 }
 function installation_DHCP() {
+    if (is_installed(DHCP)){
 
+        Install-WindowsFeature -Name DHCP -IncludeManagementTools
+
+    }
+
+    else{
+
+        Write-Host "cest installed"
+
+    }
+    menu
 
 }
 function  installation_DNS() {
+    if (is_installed(DNS)){
 
+        Install-WindowsFeature -Name DNS -IncludeManagementTools
+
+    }
+
+    else{
+
+        Write-Host "cest installed"
+
+    }
+    menu
 
 }
 
 function creation_arborescence() {
+    try {
+$root = "DC=ad01,DC=lcl"
+$rep = @()
 
-                
+    $rep_nb = Read-Host "Combien de sous OU va comporter votre OU en plus de votre OU () 1 si que votre OU"
+        for ($i=0;$i -lt $rep_nb;$i++){
+
+            $rep+=($(Read-Host "Entrez le nom de l'OU numero $i"))
+
+            New-ADOrganizationalUnit -Name $rep($i) -Path $root
+            $root = "OU=$rep,"+$root
+
+        }
+        menu
+    }
+
+    catch{
+
+        Write-Host "Erreur : " $($_.Exeception.Message)
+
+    }
+
 }
 
 function creation_utilisateur_IN_OU($OU) {
+try {
 
+    $user_nameSam = Read-Host "entrer le sam"
+    $user_name = Read-Host "entrer le nom"
+    $user_firstname = Read-Host "entrer le firstname"
+    $user_surname = Read-Host "entrer le surname"
+    $user_mail = Read-Host "entrer le usermail"
+    $user_password = Read-Host "entrer le password"
+
+    New-ADUser -Name $user_nameSam -SamAccountName $user_name -GivenName $user_firstname -Surname $user_surname -EmailAddress $user_mail -AccountPassword (ConvertTo-SecureString $user_password -AsPlainText -Force) -Enabled $true
+    menu
+}
+
+catch {
+
+ Write-Host "Erreur : " $($_.Exeception.Message)
+
+}
 
 }
 function  configuration_dhcp() {
-
+    try {
+       
+        do {
+            $numberOfRange = Read-Host "Combien d'étendu souhaitez-vous créer ?"
+            for ($i = 0; $i -lt $numberOfRange; $i++) {
+                $rangeName = Read-Host "Quel est le nom de la range n°$($i + 1)?"
+                $startRange = Read-Host "Donner l'adresse de début de l'étendue"
+                $endRange = Read-Host "Donner l'adresse de fin de l'étendue"
+                $subnetmask = Read-Host "Donner le masque de sous réseau en décimal pointer (exemple : 255.255.255.0)"
+                $dnsServer = Read-Host "Donner l'adresse du serveur DNS"
+                $gatewayAddr = Read-Host "Donner l'adresse de la passerelle"
+                $lessDays = Read-Host "Nombre de jour avant expiration des baux"
+                $lessHours = Read-Host "Nombre d'heure avant expiration des baux"
+                $lessMinutes = Read-Host "Nombre de minutes avant expiration des baux"
+                $lessDuration = New-TimeSpan -Days $lessDays -Hours $lessHours -Minutes $lessMinutes
+    
+                Add-DhcpServerV4Scope -Name $rangeName -StartRange $startRange -EndRange $endRange -SubnetMask $subnetmask
+                
+                Set-DhcpServerV4OptionValue -DnsServer $dnsServer -Router $gatewayAddr
+                
+                Set-DhcpServerv4Scope -ScopeId (Get-NetIPAddress -AddressFamily IPv4).IPAddress[0] -LeaseDuration $lessDuration -State Active
+            }
+            Restart-service dhcpserver
+            Write-Host "Configuration du service DHCP réussi" -ForegroundColor Green
+        }while ($numberOfRange -notmatch "[0-9]+")
+        menu
+    }
+    catch {
+        Write-Host "Erreur : " $($_.Exeception.Message)
+    }
 }
 function  activation_dhcp() {
+    try {
+        $fqdn = "$($env:COMPUTERNAME).$((Get-ComputerInfo).CSDomain)"
+        Add-DhcpServerInDC -DnsName $fqdn -IPAddress (Get-NetIPAddress -AddressFamily IPv4).IPAddress[0]
+        Set-ItemProperty -Path registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\ServerManager\Roles\12 -Name ConfigurationState -Value 2
+        menu
+
+    }
+
+    catch {
+
+        Write-Host "Erreur : " $($_.Exeception.Message)
+    }
+    
+        
 
 }
 function desactiver_all_mdp() {
-
-    Get-ADUser -Filter "*"
+    try {
+        foreach ($user in (Get-ADUser -Filter * -Property * | Where-Object { $_.passwordneverexpires -ne $true })) {
+            Set-ADUser -Identity $user.SamAccountName -AccountExpirationDate (Get-Date -Format "MM/dd/yyyy HH:mm:ss")
+            Write-Host "Date d'expiration de $($user.Name) modifier avec succès" -ForegroundColor Green
+            menu
+        }
+    }
+    catch {
+        Write-Host "Erreur : " $($_.Exeception.Message)
+    }
+    
 
 }
+
 
 function afficher_arborescence {
 
@@ -92,7 +241,7 @@ function afficher_arborescence {
         # Recursively process the child node
     
         afficher_arborescence -baseDN $childNode.DistinguishedName -indentLevel ($indentLevel + 1)
-    
+        menu
     }
     
 }
@@ -113,6 +262,7 @@ function import_user_csv($path_to_csv, $race_du_fichier) {
 
             Write-Error "Le fichier n'est pas un csv"
         }
+        menu
     }
     catch {
 
@@ -129,7 +279,8 @@ function menu() {
 6- En  sixième choix, proposer l’affichage de l’ensemble de l’arborescence de  l’ADE
 7- septième choix, proposer un export en csv des utilisateurs de l’AD
 8- Et pour finir en huitième choix, proposer un import des utilisateur d’un AD en CSV
-9- quitter"
+9- quitter
+appuyez sur n'importe quoi pour relancer le menu"
     Read-Host $choice
     switch ($choice) {
         0 {
@@ -177,3 +328,5 @@ function menu() {
 
 
 #==========================================MAIN================================================#
+
+menu
