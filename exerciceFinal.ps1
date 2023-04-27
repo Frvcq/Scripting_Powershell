@@ -1,5 +1,64 @@
 
-is_insttalled (string $name) {
+
+function Show-OUArbo {
+    #by flavien le bg
+    param(
+        [string]$baseDN,
+        [int]$indentLevel = 0
+    )
+    
+    
+    
+    # Define an array of colors to use for each level of indentation
+    $colors = @('Green', 'Yellow', 'Cyan', 'Magenta', 'Red', 'Blue', 'Gray')
+    
+    
+    
+    # Retrieve the child nodes for the current node
+    $childNodes = @(Get-ADOrganizationalUnit -SearchBase $baseDN -Filter * -Properties Name -SearchScope OneLevel)
+    
+    
+    
+    # Process each child node recursively
+    for ($i = 0; $i -lt $childNodes.Count; $i++) {
+        $childNode = $childNodes[$i]
+    
+    
+    
+        # Indent the output based on the current recursion level
+        $indent = "│  " * $indentLevel
+        if ($i -eq $childNodes.Count - 1) {
+            $branch = "└──"
+        }
+        else {
+            $branch = "├──"
+        }
+    
+    
+    
+        # Get the color to use for this level of indentation
+        $colorIndex = $indentLevel % $colors.Count
+        $color = $colors[$colorIndex]
+    
+    
+    
+        # Write the name of the current node to the console in the current color
+        Write-Host "$indent$branch" -NoNewline
+        Write-Host $childNode.Name -ForegroundColor $color
+    
+    
+    
+        # Recursively process the child node
+        Show-OUArbo -baseDN $childNode.DistinguishedName -indentLevel ($indentLevel + 1)
+    }
+    
+}
+function is_installed {
+   
+    param(
+        [string] $name
+    )
+
     $state = $false
 
     try {
@@ -24,13 +83,13 @@ is_insttalled (string $name) {
 }
 function installation_services_AD() {
 
-    if (!(is_installed(AD-Domain-Services))){
+    if (!(is_installed "AD-Domain-Services")) {
 
         Install-WindowsFeature -Name AD-Domain-Services -IncludeManagementTools
 
     }
 
-    else{
+    else {
 
         Write-Host "cest installed"
 
@@ -41,13 +100,13 @@ function installation_services_AD() {
 
 }
 function installation_DHCP() {
-    if (is_installed(DHCP)){
+    if (is_installed "DHCP") {
 
         Install-WindowsFeature -Name DHCP -IncludeManagementTools
 
     }
 
-    else{
+    else {
 
         Write-Host "cest installed"
 
@@ -56,13 +115,13 @@ function installation_DHCP() {
 
 }
 function  installation_DNS() {
-    if (is_installed(DNS)){
+    if (is_installed "DNS") {
 
         Install-WindowsFeature -Name DNS -IncludeManagementTools
 
     }
 
-    else{
+    else {
 
         Write-Host "cest installed"
 
@@ -73,22 +132,22 @@ function  installation_DNS() {
 
 function creation_arborescence() {
     try {
-$root = "DC=ad01,DC=lcl"
-$rep = @()
+        $root = "DC=ad01,DC=lcl"
 
-    $rep_nb = Read-Host "Combien de sous OU va comporter votre OU en plus de votre OU () 1 si que votre OU"
-        for ($i=0;$i -lt $rep_nb;$i++){
 
-            $rep+=($(Read-Host "Entrez le nom de l'OU numero $i"))
+        $rep_nb = Read-Host "Combien de sous OU va comporter votre OU en plus de votre OU () 1 si que votre OU"
+        for ($i = 0; $i -lt $rep_nb; $i++) {
+
+            Read-Host "Entrez le nom de l'OU numero $i"
 
             New-ADOrganizationalUnit -Name $rep($i) -Path $root
-            $root = "OU=$rep,"+$root
+            $root = "OU=$rep," + $root
 
         }
         menu
     }
 
-    catch{
+    catch {
 
         Write-Host "Erreur : " $($_.Exeception.Message)
 
@@ -97,24 +156,24 @@ $rep = @()
 }
 
 function creation_utilisateur_IN_OU($OU) {
-try {
+    try {
 
-    $user_nameSam = Read-Host "entrer le sam"
-    $user_name = Read-Host "entrer le nom"
-    $user_firstname = Read-Host "entrer le firstname"
-    $user_surname = Read-Host "entrer le surname"
-    $user_mail = Read-Host "entrer le usermail"
-    $user_password = Read-Host "entrer le password"
+        $user_nameSam = Read-Host "entrer le sam"
+        $user_name = Read-Host "entrer le nom"
+        $user_firstname = Read-Host "entrer le firstname"
+        $user_surname = Read-Host "entrer le surname"
+        $user_mail = Read-Host "entrer le usermail"
+        $user_password = Read-Host "entrer le password"
 
-    New-ADUser -Name $user_nameSam -SamAccountName $user_name -GivenName $user_firstname -Surname $user_surname -EmailAddress $user_mail -AccountPassword (ConvertTo-SecureString $user_password -AsPlainText -Force) -Enabled $true
-    menu
-}
+        New-ADUser -Name $user_nameSam -SamAccountName $user_name -GivenName $user_firstname -Surname $user_surname -EmailAddress $user_mail -AccountPassword (ConvertTo-SecureString $user_password -AsPlainText -Force) -Enabled $true
+        menu
+    }
 
-catch {
+    catch {
 
- Write-Host "Erreur : " $($_.Exeception.Message)
+        Write-Host "Erreur : " $($_.Exeception.Message)
 
-}
+    }
 
 }
 function  configuration_dhcp() {
@@ -169,12 +228,12 @@ function  activation_dhcp() {
 function desactiver_all_mdp() {
     try {
         foreach ($user in (Get-ADUser -Filter * -Property * | Where-Object { $_.passwordneverexpires -ne $true })) {
-            if (($user.name -eq "Administrateur") -or ($user.name -eq "Admin")){
+            if (($user.name -eq "Administrateur") -or ($user.name -eq "Admin")) {
                 Write-Host "on ne touche pas a ladmin" 
             }
-            else{
-            Set-ADUser -Identity $user.SamAccountName -AccountExpirationDate (Get-Date -Format "MM/dd/yyyy HH:mm:ss")
-            Write-Host "Date d'expiration de $($user.Name) modifier avec succès" -ForegroundColor Green
+            else {
+                Set-ADUser -Identity $user.SamAccountName -AccountExpirationDate (Get-Date -Format "MM/dd/yyyy HH:mm:ss")
+                Write-Host "Date d'expiration de $($user.Name) modifier avec succès" -ForegroundColor Green
             }
         }
         menu
@@ -188,7 +247,7 @@ function desactiver_all_mdp() {
 
 
 function afficher_arborescence {
-#aka by le flavien el bg qui a ameliorer a fond la caisse
+    #aka by le flavien el bg qui a ameliorer a fond la caisse
     param(
     
         [string]$baseDN,
@@ -286,38 +345,38 @@ function menu() {
 8- Et pour finir en huitième choix, proposer un import des utilisateur d’un AD en CSV
 9- quitter
 appuyez sur n'importe quoi pour relancer le menu"
-    Read-Host $choice
+    $choice = Read-Host "choix "
     switch ($choice) {
-        0 {
+        1 {
             installation_services_AD
             installation_DHCP
             installation_DNS
         }
-        1 {
+        2 {
             creation_arborescence
 
         }
-        2 { 
+        3 { 
             creation_utilisateur_IN_OU
         }
-        3 {
+        4 {
             configuration_dhcp
             activation_dhcp
 
         }
-        4 {
+        5 {
             desactiver_all_mdp
         }
-        5 { 
-            afficher_arborescence
-        }
         6 { 
-            export_user_csv
+        Show-OUArbo $((Get-ADDomain).DistinguishedName)
         }
         7 { 
-            import_user_csv
+            export_user_csv
         }
         8 { 
+            import_user_csv
+        }
+        9 { 
             exit 0
         }
         default { 
