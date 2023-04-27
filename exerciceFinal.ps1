@@ -169,7 +169,7 @@ function  activation_dhcp() {
 function desactiver_all_mdp() {
     try {
         foreach ($user in (Get-ADUser -Filter * -Property * | Where-Object { $_.passwordneverexpires -ne $true })) {
-            if ($user.name -eq "Administrateur" || $user.name -eq "Admin"){
+            if (($user.name -eq "Administrateur") -or ($user.name -eq "Admin")){
                 Write-Host "on ne touche pas a ladmin" 
             }
             else{
